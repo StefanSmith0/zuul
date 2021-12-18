@@ -4,8 +4,8 @@
 using namespace std;
 
 Room::Room(int iID) {
-  cout << "Room Initialized" << endl;
   ID = iID;
+  cout << "Room " << ID << " Initialized" << endl;
   coord[0] = 100;
   coord[1] = 100;
 }
