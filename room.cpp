@@ -3,14 +3,17 @@
 #include "item.h"
 #include <map>
 #include <vector>
+#include <utility>
 
 using namespace std;
 
 Room::Room(int iID) {
   ID = iID;
-  cout << "Room " << ID << " Initialized" << endl;
+  strcpy(name, "Default name");
+  strcpy(desc, "Default description");
   coord[0] = 100;
   coord[1] = 100;
+  visible = false;
 }
 
 char* Room::getName() {
@@ -41,8 +44,12 @@ void Room::setID(int newID) {
   ID = newID;
 }
 
-map<int, Room*> Room::getExit() {
-  return exits;
+Room* Room::getExit(int exitDirection) {
+  if(exits.find(exitDirection) != exits.end()) {
+    Room* exitptr = exits[exitDirection];
+    return exitptr;
+  }
+  return NULL;
 }
 
 void Room::setExit(int index, Room *newExit) {
@@ -53,10 +60,9 @@ int Room::getExitSize() {
   return exits.size();
 }
 
-int* Room::getCoord() {
-  int *localCoord = new int[2];
-  localCoord[0] = coord[0];
-  localCoord[1] = coord[1];
+int Room::getCoord(int pos) {
+  int localCoord = 0;
+  localCoord = coord[pos];
   return localCoord;
 }
 
@@ -74,19 +80,15 @@ Item Room::getItem(int itemID) {
   return inventory[0];
 }
 
-Item Room::takeItem(int itemID) {
-  Item* nullItem = new Item(1);
-  for(int i = 0; i < inventory.size(); i++) {
-    if(inventory[i].getID() == itemID) {
-      cout << "Vector size: " << inventory.size() << " (before clone)" << endl;
-      Item* itemptr = new Item(inventory[i].getID(), inventory[i].getName(), inventory[i].getDesc());
-      cout << "Vector size: " << inventory.size() << " (after clone)" << endl;
-      inventory.erase(inventory.begin() + (i - 1));
-      cout << "Vector size: " << inventory.size() << " (after erase)" << endl;
-      return *itemptr;
+Item* Room::takeItem(char requestedItem[]) {
+  for(vector<Item>::iterator it = inventory.begin(); it != inventory.end(); it++) {
+    if(!strcmp(it->getName(), requestedItem)) {
+      Item* itemptr = new Item(it->getID(), it->getName(), it->getDesc());
+      inventory.erase(it);
+      return itemptr;
     }
   }
-  return *nullItem;
+  return NULL;
 }
 
 void Room::giveItem(Item newItem) {
@@ -95,4 +97,12 @@ void Room::giveItem(Item newItem) {
 
 int Room::getInventorySize() {
   return inventory.size();
+}
+
+void Room::setVisible() {
+  visible = true;
+}
+
+bool Room::isVisible() {
+  return visible;
 }
