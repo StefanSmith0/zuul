@@ -22,10 +22,11 @@ public:
   int getExitSize();
   int getCoord(int pos);
   void setCoord(int x, int y);
-  Item getItem(int itemID);
-  Item* takeItem(char itemRequested[]);
+  Item* getItem(char requestedItem[]);
+  Item* takeItem(char requestedItem[]);
   void giveItem(Item newItem);
   int getInventorySize();
+  void listItems();
   void setVisible();
   bool isVisible();
 private:

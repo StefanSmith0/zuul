@@ -71,13 +71,14 @@ void Room::setCoord(int x, int y) {
   coord[1] = y;
 }
 
-Item Room::getItem(int itemID) {
-  for(int i = 0; i < inventory.size(); i++) {
-    if(inventory[i].getID() == itemID) {
-      return inventory[i];
+Item* Room::getItem(char requestedItem[]) {
+  for(vector<Item>::iterator it = inventory.begin(); it != inventory.end(); it++) {
+    if(!strcmp(it->getName(), requestedItem)) {
+      Item* itemptr = new Item(it->getID(), it->getName(), it->getDesc());
+      return itemptr;
     }
   }
-  return inventory[0];
+  return NULL;
 }
 
 Item* Room::takeItem(char requestedItem[]) {
@@ -97,6 +98,12 @@ void Room::giveItem(Item newItem) {
 
 int Room::getInventorySize() {
   return inventory.size();
+}
+
+void Room::listItems() {
+  for(vector<Item>::iterator it = inventory.begin(); it != inventory.end(); it++) {
+    cout << it->getName() << " - " << it->getDesc() << endl;
+  }
 }
 
 void Room::setVisible() {

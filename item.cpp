@@ -7,14 +7,12 @@ Item::Item(int newID, char newName[20], char newDesc[100]) {
   id = newID;
   strcpy(name, newName);
   strcpy(desc, newDesc);
-  cout << "Item Constructed." << endl;
 }
 
 Item::Item(int newID) {
   id = 0;
   strcpy(name, "defaultName");
   strcpy(desc, "defaultDesc");
-  cout << "Default Item Constructed." << endl;
 }
 
 int Item::getID() {
@@ -35,6 +33,5 @@ char* Item::getDesc() {
 
 Item Item::clone() {
   Item localItem(id, name, desc);
-  cout << "Item " << id << " cloned." << endl;
   return localItem;
 }

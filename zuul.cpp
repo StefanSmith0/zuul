@@ -1,3 +1,10 @@
+/*
+Stefan Smith
+22 December, 2021
+Zuul - Text-based game, search for exit in randomly-generated map.
+*/
+
+
 #include <iostream>
 #include <cstring>
 #include <vector>
@@ -15,9 +22,9 @@ void makeRooms(int roomNum, vector<Room*> &vect, vector<vector<int>> &board, map
 void updateBoard(vector<vector<int>> &roomBoard, vector<Room*> &vect);
 bool validnewCoord(map<int, vector<int>> roomMap, int newCoord[2]);
 Room* parseCommand(char input[], vector<vector<int>> &roomBoard, vector<Room*> &vect,
-		  map<int, vector<int>> roomMap, Room *currentRoom, vector<Item> &inventory); 
+		   map<int, vector<int>> roomMap, Room *currentRoom, vector<Item> &inventory, bool &printCycle); 
 Room* moveToRoom(Room* currentRoom, vector<Room*> &vect);
-void printRoomDetails(Room* currentRoom);
+void printRoomDetails(Room* currentRoom, vector<Item> &playerInventory);
 bool eventCheck(vector<Room*> &vect, Item goldKey, Item redKey, Item blueKey, Item axe, Item rope);
 
 const int NORTH = 1;
@@ -31,7 +38,7 @@ int main() {
   int newID;
   char newName[20];
   char newDesc[100];
-  
+  //Make Items
   newID = 1;
   strcpy(newName, "goldKey");
   strcpy(newDesc, "A beautiful, golden key. It might be your ticket out of here.");
@@ -65,57 +72,64 @@ int main() {
   makeRooms(roomNum, vect, roomBoard, roomMap, goldKey, redKey, blueKey, axe, rope);
   //Main play loop
   bool running = true;
+  bool printCycle;
   char input[20];
   Room *currentRoom = vect[0];
   printBoard(boardSize, roomBoard, currentRoom, vect);
   cout << "Welcome to Zuul. Escape the scary mansion your friends locked you in to win!" << endl;
   while(running) {
-    printRoomDetails(currentRoom);
+    printRoomDetails(currentRoom, inventory);
     cout << "Enter command: ";
     cin.getline(input, 20);
-    if(!strcmp(input, "quit")) {
+    if(!strcmp(input, "quit") || !strcmp(input, "q")) {
       running = false;
     }
     else {
-      currentRoom = parseCommand(input, roomBoard, vect, roomMap, currentRoom, inventory);
+      printCycle = false;
+      currentRoom = parseCommand(input, roomBoard, vect, roomMap, currentRoom, inventory, printCycle);
       updateBoard(roomBoard, vect);
-      printBoard(boardSize, roomBoard, currentRoom, vect);
+      if(printCycle) {
+	printBoard(boardSize, roomBoard, currentRoom, vect);
+      }
       if(eventCheck(vect, goldKey, redKey, blueKey, axe, rope)) {
-	cout << "---Glorious Victory---" << endl;
+	cout << "---You Escaped---" << endl;
 	running = false;
       }
     }
+    cout << endl;
   }
   return 0;
 }
-
+//Check for win events
 bool eventCheck(vector<Room*> &vect, Item goldKey, Item redKey, Item blueKey, Item axe, Item rope) {
-  cout << "Top of eventCheck" << endl;
   Item* localItemptr;  //takeItem returns an item*
-  if(vect[1]->getItem(2).getID() == 2 && vect[1]->getItem(3).getID() == 3) {
+  if(vect[1]->getItem(redKey.getName()) != NULL && vect[1]->getItem(blueKey.getName()) != NULL) { //safe unlocked
     localItemptr = vect[1]->takeItem(redKey.getName());
     localItemptr = vect[1]->takeItem(blueKey.getName());
     vect[1]->giveItem(goldKey);
     cout << "The heavy case opened with a long creak, and something inside gleamed gold." << endl;
   }
-  if(vect[9]->getItem(1).getID() == 1) {
+  if(vect[9]->getItem(goldKey.getName()) != NULL) { //front door unlocked (win)
     localItemptr = vect[1]->takeItem(goldKey.getName());
     cout << "The golden key unlocked the front door's golden padlock, and you strolled out into the night toward home." << endl;
+    cout << "Ending (1/3)" << endl;
     return true;
   }
-  else if(vect[9]->getItem(4).getID() == 4) {
+  else if(vect[9]->getItem(axe.getName()) != NULL) { //front door broken down (win)
     localItemptr = vect[1]->takeItem(axe.getName());
-    cout << "The door might have been beautiful at one point, but you didn't feel too bad about destroying it in it's current state. After a couple good swings, you stepped through the hole in the door and strolled off into the night." << endl;
+    cout << "You could tell the door was once beautiful, and you felt a little guilty about destroying it. After a couple good swings, you stepped through the hole in the door and strolled off, hoping that the neighbors weren't calling the police right now..." << endl;
+    cout << "Ending (2/3)" << endl;
     return true;
   }
-  if(vect[13]->getItem(5).getID() == 5) {
-    cout << "You swung the rope over the balcony, and after a few moments of summoning courage, swung over and climbed down to the ground. Now to make some new friends..." << endl;
+  if(vect[13]->getItem(rope.getName()) != NULL) { //balcony climbed off of (win)
+    cout << "You swung the rope over the balcony railing, and after a few moments of summoning courage, climbed over and down to the ground. Now to make some new friends..." << endl;
+    cout << "Ending (3/3)" << endl;
     return true;
   }
   return false;
 }
-
-void printRoomDetails(Room* currentRoom) {
+//Prints the details of the the room player is in every loop
+void printRoomDetails(Room* currentRoom, vector<Item> &playerInventory) {
   cout << "Currently in: Room " << currentRoom->getID() << " - " << currentRoom->getName() << " ";
   cout << "(" << currentRoom->getCoord(0) << "," << currentRoom->getCoord(1) << ")" << endl;
   cout << " - " << currentRoom->getDesc() << endl;
@@ -136,23 +150,23 @@ void printRoomDetails(Room* currentRoom) {
   
   if(currentRoom->getInventorySize() > 0) {
     cout << "---Items in room---" << endl;
-    for(int i = 0; i < currentRoom->getInventorySize(); i++) {
-      cout << currentRoom->getItem(i).getName() << " - " << currentRoom->getItem(i).getDesc() << endl;
-    }
+    currentRoom->listItems();
     cout << "-------------------" << endl;
   }
 }
-
+//Parse input from player, return a room to move to (returns currentRoom if no move)
 Room *parseCommand(char input[], vector<vector<int>> &roomBoard, vector<Room*> &vect,
-		  map<int, vector<int>> roomMap, Room *currentRoom, vector<Item> &playerInventory) {
-  if(!strcmp(input, "move")) {
+		   map<int, vector<int>> roomMap, Room *currentRoom, vector<Item> &playerInventory,
+		   bool &printCycle) {
+  if(!strcmp(input, "move") || !strcmp(input, "m")) {
     currentRoom = moveToRoom(currentRoom, vect);
+    printCycle = true;
   }
-  else if(!strcmp(input, "grab")) {
+  else if(!strcmp(input, "grab") || !strcmp(input, "g")) {
     if(currentRoom->getInventorySize() > 0) {
       cout << "Name of item to grab (case sensitive): ";
       cin.getline(input, 20);
-      Item* returnedItem = currentRoom->takeItem(input);
+      Item* returnedItem = currentRoom->takeItem(input); //takeItem lets the room remove its own items
       if(returnedItem == NULL) {
 	cout << "There's no item in room named " << input << "!" << endl;
       } else {
@@ -164,7 +178,7 @@ Room *parseCommand(char input[], vector<vector<int>> &roomBoard, vector<Room*> &
       cout << "There's nothing to grab!" << endl;
     }
   }
-  else if(!strcmp(input, "drop")) {
+  else if(!strcmp(input, "drop") || !strcmp(input, "d")) { //There's a better way to do this
     cout << "Name of item to drop: ";
     cin.getline(input, 20);
     bool droppedAnItem = false;
@@ -181,7 +195,7 @@ Room *parseCommand(char input[], vector<vector<int>> &roomBoard, vector<Room*> &
       cout << "There's no item named " << input << " in your inventory." << endl;
     }
   }
-  else if(!strcmp(input, "bag")) {
+  else if(!strcmp(input, "bag") || !strcmp(input, "b")) {
     cout << "---Items in bag---" << endl;
     for(int i = 0; i < playerInventory.size(); i++) {
       cout << playerInventory[i].getName() << " - " << playerInventory[i].getDesc() << endl;
@@ -190,55 +204,56 @@ Room *parseCommand(char input[], vector<vector<int>> &roomBoard, vector<Room*> &
   }
   else if(!strcmp(input, "help")) {
     cout << "---Commands---" << endl;
-    cout << "\"move\" - Enters move mode. Type a cardinal direction afterward to move to an adjacent room." << endl;
-    cout << "\"grab\" - Enters grab mode. Type the name of an object in the room to pick it up." << endl;
-    cout << "\"drop\" - Enters drop mode. Type the name of an object from your bag to drop it." << endl;
-    cout << "\"bag\" - Lists the items in your bag." << endl;
-    cout << "\"quit\" - Ends the program." << endl;
+    cout << "\"move/m\" - Enters move mode. Type a cardinal direction afterward to move to an adjacent room." << endl;
+    cout << "\"grab/g\" - Enters grab mode. Type the name of an object in the room to pick it up." << endl;
+    cout << "\"drop/d\" - Enters drop mode. Type the name of an object from your bag to drop it. (drop items to use them)" << endl;
+    cout << "\"bag/b\" - Lists the items in your bag." << endl;
+    cout << "\"quit/q\" - Ends the program." << endl;
   }
   else {
     cout << "Command: " << input << " not recognized." << endl;
     cout << "Type \"help\" for a guide." << endl;
   }
+  cin.clear(); //Sometimes does the cin loop thing if this isn't here
   return currentRoom;
 }
-
+//Triggered by move command, moves player to adjactent room if allowed
 Room* moveToRoom(Room* currentRoom, vector<Room*> &vect) {
   char input[20];
   cout << "Direction: ";
   cin.getline(input, 20);
   Room* outRoom = currentRoom;
   int moveCoord[2];
-  if(!strcmp(input, "north")) {
+  if(!strcmp(input, "north") || !strcmp(input, "n")) {
     moveCoord[0] = currentRoom->getCoord(0);
     moveCoord[1] = currentRoom->getCoord(1) - 1;
   }
-  else if(!strcmp(input, "east")) {
+  else if(!strcmp(input, "east") || !strcmp(input, "e")) {
     moveCoord[0] = currentRoom->getCoord(0) + 1;
     moveCoord[1] = currentRoom->getCoord(1);
   }
-  else if(!strcmp(input, "south")) {
+  else if(!strcmp(input, "south") || !strcmp(input, "s")) {
     moveCoord[0] = currentRoom->getCoord(0);
     moveCoord[1] = currentRoom->getCoord(1) + 1;
   }
-  else if(!strcmp(input, "west")) {
+  else if(!strcmp(input, "west") || !strcmp(input, "w")) {
     moveCoord[0] = currentRoom->getCoord(0) - 1;
     moveCoord[1] = currentRoom->getCoord(1);
   }
   else {
-    cout << "Direction not recognized. (north, east, south, west)" << endl;
+    cout << "Direction not recognized. (north/n, east/e, south/s, west/w)" << endl;
   }
   for(int i = 0; i < vect.size(); i++) {
     if(moveCoord[0] == vect[i]->getCoord(0) && moveCoord[1] == vect[i]->getCoord(1)) {
-      outRoom = vect.at(i);
-      outRoom->setVisible();
+      outRoom = vect.at(i); //Outputs valid room to move into
+      outRoom->setVisible(); //Makes new room visible
       return outRoom;
     }
   }
   cout << "There is no room there!" << endl;
   return currentRoom;
 }
-
+//Prints board
 void printBoard(int boardSize, vector<vector<int>> &board, Room* currentRoom, vector<Room*> &vect) {
   Room* roomptr;
   cout << "    ";
@@ -287,7 +302,7 @@ void printBoard(int boardSize, vector<vector<int>> &board, Room* currentRoom, ve
     cout << endl;
   }
 }
-
+//Generates rooms, makes map, exits, items
 void makeRooms(int roomNum, vector<Room*> &vect, vector<vector<int>> &board, map<int, vector<int>> &roomMap,
 	       Item goldKey, Item redKey, Item blueKey, Item axe, Item rope) {
   int randDirection = 0;
@@ -455,7 +470,7 @@ bool validnewCoord(map<int, vector<int>> roomMap, int newCoord[2]) {
   }
   return true;
 }
-//Update the roomBoard for printing
+//Update the roomBoard for printBoard
 void updateBoard(vector<vector<int>> &roomBoard, vector<Room*> &vect) {
   int x;
   int y;
